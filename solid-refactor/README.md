@@ -1,53 +1,101 @@
-# 🚀 Space Shooter — SOLID Refactored
+# 🚀 Space Shooter — C++ SOLID Edition
 
-> A **raylib** C game refactored from a monolithic codebase into a clean,
-> maintainable architecture by applying all five **SOLID** Object-Oriented
-> Design principles — in pure C.
+> A **raylib** arcade game converted from C to **modern C++17**, with every
+> [SOLID](https://en.wikipedia.org/wiki/SOLID) design principle applied and
+> explained. Same gameplay. Cleaner architecture. 
+
+<div align="center">
+
+![C++17](https://img.shields.io/badge/C%2B%2B-17-blue?style=flat-square&logo=cplusplus)
+![raylib](https://img.shields.io/badge/raylib-5.x-orange?style=flat-square)
+![SOLID](https://img.shields.io/badge/SOLID-%E2%9C%93-green?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
+
+</div>
 
 ---
 
 ## 📋 Table of Contents
 
-- [Game Overview](#-game-overview)
-- [Project Structure](#-project-structure)
-- [Before vs After — The Refactor](#-before-vs-after--the-refactor)
-- [SOLID Principles Applied](#-solid-principles-applied)
-  - [S — Single Responsibility](#s--single-responsibility-principle-srp)
-  - [O — Open/Closed](#o--openclosed-principle-ocp)
-  - [L — Liskov Substitution](#l--liskov-substitution-principle-lsp)
-  - [I — Interface Segregation](#i--interface-segregation-principle-isp)
-  - [D — Dependency Inversion](#d--dependency-inversion-principle-dip)
-- [How to Build and Run](#-how-to-build-and-run)
-- [Git Workflow](#-git-workflow)
-- [AI Prompts Used](#-ai-prompts-that-generated-this-refactor)
+1. [Game Overview](#-game-overview)
+2. [Architecture at a Glance](#-architecture-at-a-glance)
+3. [Complete File Map](#-complete-file-map)
+4. [C to C++ Conversion Table](#-c-to-c-conversion-table)
+5. [Module-by-Module Comparison](#-module-by-module-comparison)
+6. [SOLID Principles Deep Dive](#-solid-principles-deep-dive)
+7. [Game Loop Flowchart](#-game-loop-flowchart)
+8. [RAII Lifecycle Diagram](#-raii-lifecycle-diagram)
+9. [Collision System Diagram](#-collision-system-diagram)
+10. [How to Build and Run](#-how-to-build-and-run)
+11. [Git Workflow](#-git-workflow)
+12. [AI Prompts Used](#-ai-prompts-used)
 
 ---
 
 ## 🎮 Game Overview
 
-Space Shooter is a top-down arcade game built with **raylib** in C.
+Space Shooter is a top-down arcade game built with **raylib**.
 
-| Control | Action |
-|---|---|
-| `←` `→` `↑` `↓` Arrow keys | Move the spaceship |
-| `Space` | Fire a bullet |
-| `Enter` | Start the game |
+| Control     | Action              |
+|-------------|---------------------|
+| `← → ↑ ↓` | Move the spaceship  |
+| `Space`     | Fire a bullet       |
+| `Enter`     | Start the game      |
 
 **Gameplay features:**
 - Enemies fall from the top and drift toward the player
-- Shoot enemies to earn **+10 points** each
-- A **shield power-up** (green circle) drops on 60 % of kills — collect it to absorb one enemy hit
+- Shoot enemies to earn **+10 points** per kill
+- **Shield pickup** (green circle) drops on **60% of kills** and absorbs one hit
 - Every **60 seconds** the level increases and enemies speed up
 - High score is preserved across deaths
 
 ---
 
-## 📁 Project Structure
+## 🗺 Architecture at a Glance
 
 ```
-SpaceShooter/
+┌──────────────────────────────────────────────────────────────────┐
+│                         main.cpp                                 │
+│             (Game loop orchestration only — SRP)                 │
+│                                                                  │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌─────────────────┐  │
+│  │ GameState │ │ Renderer  │ │AudioMgr   │ │namespace        │  │
+│  │ score     │ │ textures  │ │ sounds    │ │Collision        │  │
+│  │ level     │ │ RAII      │ │ RAII      │ │check()          │  │
+│  └───────────┘ └───────────┘ └───────────┘ │make*Rect()      │  │
+│                                             └─────────────────┘  │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌─────────────────┐  │
+│  │  Player   │ │  Bullet   │ │  Enemy    │ │  ShieldPickup   │  │
+│  │  class    │ │  Manager  │ │  Manager  │ │  class          │  │
+│  │  draw()   │ │std::array │ │std::array │ │  static method  │  │
+│  │  const    │ │draw()const│ │draw()const│ │  draw() const   │  │
+│  └───────────┘ └───────────┘ └───────────┘ └─────────────────┘  │
+│                                                                  │
+│                       ┌───────────┐                              │
+│                       │ Starfield │                              │
+│                       │ std::array│                              │
+│                       │draw()const│                              │
+│                       └───────────┘                              │
+└──────────────────────────────┬───────────────────────────────────┘
+                               │ interfaces only — DIP
+                    ┌──────────▼──────────┐
+                    │     raylib 5.x      │
+                    │  graphics + audio   │
+                    └─────────────────────┘
+```
+
+**Key rule:** `main.cpp` calls only module interfaces. It never calls
+raylib directly for collision, audio, or asset management. That is
+**Dependency Inversion (DIP)** in action.
+
+---
+
+## 📁 Complete File Map
+
+```
+SpaceShooterCPP/
 │
-├── assets/                  ← Game assets (loaded at runtime)
+├── assets/                      ← Runtime assets (unchanged from C)
 │   ├── player.png
 │   ├── enemy.png
 │   ├── shoot.wav
@@ -55,166 +103,261 @@ SpaceShooter/
 │   └── levelup.wav
 │
 ├── .vscode/
-│   └── tasks.json           ← VS Code build + run tasks
+│   └── tasks.json               ← g++ -std=c++17 build task
 │
-│── ORIGINAL FILES (refactored in-place) ──────────────────────
-├── bullet.h / bullet.c      ← Bullet: fire, move, draw
-├── enemy.h  / enemy.c       ← Enemy: spawn, move, draw  [+ RespawnEnemy]
-├── player.h / player.c      ← Player: move, draw
-├── shield.h / shield.c      ← Shield pickup lifecycle   [renamed + split]
-├── starfield.h / starfield.c← Scrolling star background
-├── main.c                   ← Game loop orchestration only
+├── .gitignore
+├── README.md
 │
-│── NEW FILES (added for SOLID) ────────────────────────────────
-├── renderer.h / renderer.c  ← Texture asset management      [SRP/ISP/DIP]
-├── audio.h    / audio.c     ← Sound asset management        [SRP/ISP/DIP]
-├── collision.h / collision.c← Collision detection interface  [SRP/ISP/DIP]
-└── game_state.h / game_state.c ← Score + level state        [SRP/OCP]
+├── GameState.hpp  / GameState.cpp      ← Score + level     [SRP, OCP]
+├── Renderer.hpp   / Renderer.cpp       ← Textures          [SRP, ISP, DIP, RAII]
+├── AudioManager.hpp / AudioManager.cpp ← Sounds            [SRP, ISP, DIP, RAII]
+├── Collision.hpp  / Collision.cpp      ← Overlap tests     [SRP, ISP, DIP, OCP]
+├── Player.hpp     / Player.cpp         ← Player            [SRP, LSP]
+├── Bullet.hpp     / Bullet.cpp         ← Bullets           [SRP, ISP, LSP]
+├── Enemy.hpp      / Enemy.cpp          ← Enemies           [SRP, OCP, LSP, DIP]
+├── ShieldPickup.hpp / ShieldPickup.cpp ← Shield pickup     [all 5 SOLID]
+├── Starfield.hpp  / Starfield.cpp      ← Background        [SRP, ISP, LSP]
+└── main.cpp                            ← Game loop         [SRP, OCP, DIP]
 ```
 
-**Total: 14 source files across 10 focused modules** — up from 6 files where
-`main.c` alone handled 9 different concerns.
+**10 modules · 20 source files · 5 assets · 1 build config**
 
 ---
 
-## 🔄 Before vs After — The Refactor
+## 🔄 C to C++ Conversion Table
 
-### File count and responsibility
+Every change made — nothing else was altered.
 
-| | Before | After |
+| Concept | C version | C++ version |
 |---|---|---|
-| Total `.c` files | 6 | 10 |
-| Lines in `main.c` | ~150 | ~130 (but pure orchestration) |
-| Responsibilities in `main.c` | 9 | 1 |
-| New focused modules added | — | 4 |
-| Raw raylib calls in `main.c` | 14+ | 0 (all behind interfaces) |
+| Data + behaviour | `typedef struct` + free functions | `class` with member methods |
+| Initialisation | `GameState_Init(&gs, t)` | Constructor `GameState gs(t)` |
+| Cleanup | `Renderer_Unload(&r)` — must remember | `~Renderer()` destructor — automatic |
+| Asset safety | Easy to forget `UnloadTexture` | RAII: structurally impossible to forget |
+| Arrays | `Bullet bullets[MAX_BULLETS] = {0}` | `std::array<Bullet, MAX_BULLETS> bullets_{}` |
+| Loops | `for (int i = 0; i < MAX; i++)` | `for (auto& b : bullets_)` |
+| Const enforcement | `const Bullet bullets[]` parameter | `void draw() const` method |
+| Grouping stateless helpers | Free functions `CheckCollision()` | `namespace Collision { check() }` |
+| String paths | `const char*` | `const std::string&` |
+| Casts | `(float)x` | `static_cast<float>(x)` |
+| Private data | Convention only | `private:` — compiler enforced |
+| `bool` type | `#include <stdbool.h>` required | Built into C++ |
+| stdlib headers | `#include <stdlib.h>` | `#include <cstdlib>` |
+| File extensions | `.h` / `.c` | `.hpp` / `.cpp` |
+| Naming style | `GameState_AddScore()` | `gs.addScore()` |
 
 ---
 
-### main.c — the most dramatic change
+## 🔁 Module-by-Module Comparison
 
-**BEFORE** — `main.c` did everything itself: loaded assets, tracked score,
-built collision rectangles, called `CheckCollisionRecs()`, called `PlaySound()`,
-compared time for level-up, and reset enemy positions inline:
+### 1. GameState
 
-```c
-// BEFORE — asset loading scattered in main()
-Texture2D playerTexture = LoadTexture("assets/player.png");
-Texture2D enemyTexture  = LoadTexture("assets/enemy.png");
-Sound shootSound        = LoadSound("assets/shoot.wav");
-Sound explosionSound    = LoadSound("assets/explosion.wav");
-Sound levelupSound      = LoadSound("assets/levelup.wav");
-
-// BEFORE — score and level as raw variables
-int score = 0, highScore = 0, level = 1;
-double lastLevelUpTime = GetTime();
-
-// BEFORE — level-up logic inline in the loop
-if (currentTime - lastLevelUpTime > 60.0) {
-    level++;
-    lastLevelUpTime = currentTime;
-    PlaySound(levelupSound);
-}
-
-// BEFORE — collision rectangles built manually, every time
-Rectangle bulletRec = { bullets[i].pos.x - 2, bullets[i].pos.y - 2, 4, 4 };
-Rectangle enemyRec  = { enemies[j].pos.x, enemies[j].pos.y,
-                        enemyTexture.width * 0.125f,
-                        enemyTexture.height * 0.125f };
-if (CheckCollisionRecs(bulletRec, enemyRec)) {
-    bullets[i].active = false;
-    enemies[j].pos = (Vector2){ rand() % (screenWidth - ...), -50 - rand()%150 };
-    enemies[j].speed = 2.0f + 0.5*(level-1);
-    PlaySound(explosionSound);
-    if (rand()%100 < 60) {
-        shield.pos = killPos;
-        shield.active = true;
-        shield.expireTime = currentTime + 5.0;
-    }
-    score += 10;
-    if (score > highScore) highScore = score;
-}
+```
+┌──────────────────────────────┬──────────────────────────────────┐
+│  C  (game_state.h)           │  C++  (GameState.hpp)            │
+├──────────────────────────────┼──────────────────────────────────┤
+│  typedef struct {            │  class GameState {               │
+│    int score, highScore;     │  public:                         │
+│    int level;                │    int score, highScore, level;  │
+│    double lastLevelUpTime;   │    double lastLevelUpTime;       │
+│  } GameState;                │                                  │
+│                              │    GameState(double startTime);  │
+│  void GameState_Init(...)    │    void addScore(int points);    │
+│  void GameState_AddScore(...)│    bool tryLevelUp(...);         │
+│  bool GameState_TryLevelUp(.)│    void reset(double t);         │
+│  void GameState_Reset(...)   │  };                              │
+└──────────────────────────────┴──────────────────────────────────┘
 ```
 
-**AFTER** — `main.c` delegates everything. Every concern has a home:
-
+**C — calling code:**
 ```c
-// AFTER — assets loaded through abstractions (DIP)
-Renderer_Init(&rend, "assets/player.png", "assets/enemy.png");
-Audio_Init(&audio, "assets/shoot.wav", "assets/explosion.wav", "assets/levelup.wav");
-
-// AFTER — score/level managed by GameState module (SRP)
 GameState gs;
 GameState_Init(&gs, GetTime());
 
-// AFTER — level-up rule lives in GameState, not here (OCP)
-if (GameState_TryLevelUp(&gs, currentTime, 60.0))
-    Audio_PlayLevelUp(&audio);
+if (currentTime - gs.lastLevelUpTime > 60.0) {   // raw arithmetic in main
+    gs.level++;
+    gs.lastLevelUpTime = currentTime;
+    PlaySound(levelupSound);                      // direct raylib call
+}
+score += 10;
+if (score > highScore) highScore = score;         // raw logic in main
+```
 
-// AFTER — collision rects built by named helpers (DIP/SRP)
-Rectangle bRect = MakeBulletRect(bullets[i].pos.x, bullets[i].pos.y);
-Rectangle eRect = MakeEnemyRect(enemies[j].pos.x, enemies[j].pos.y,
-                                rend.enemyTexture.width,
-                                rend.enemyTexture.height,
-                                rend.enemyScale);
-if (CheckCollision(bRect, eRect)) {
-    bullets[i].active = false;
-    RespawnEnemy(&enemies[j], EnemySpeed(gs.level), SCREEN_W); // OCP
-    Audio_PlayExplosion(&audio);                                 // DIP
-    ShieldPickup_Spawn(&shield, killPos, currentTime, 5.0);     // OCP
-    GameState_AddScore(&gs, 10);                                 // SRP
+**C++ — calling code:**
+```cpp
+GameState gs(GetTime());                          // constructed, not init'd
+
+if (gs.tryLevelUp(currentTime, 60.0))            // OCP: rule lives in class
+    audio.playLevelUp();                          // DIP: no PlaySound here
+
+gs.addScore(10);                                  // SRP: score logic in class
+```
+
+---
+
+### 2. Renderer
+
+```
+┌──────────────────────────────┬──────────────────────────────────┐
+│  C  (renderer.h)             │  C++  (Renderer.hpp)             │
+├──────────────────────────────┼──────────────────────────────────┤
+│  typedef struct {            │  class Renderer {                │
+│    Texture2D playerTexture;  │  public:                         │
+│    Texture2D enemyTexture;   │    Texture2D playerTexture;      │
+│    float playerScale;        │    Texture2D enemyTexture;       │
+│    float enemyScale;         │    float playerScale, enemyScale;│
+│  } Renderer;                 │                                  │
+│                              │    Renderer(string& p, string& e)│
+│  void Renderer_Init(...)     │    ~Renderer();  // RAII         │
+│  void Renderer_Unload(...)   │  };                              │
+└──────────────────────────────┴──────────────────────────────────┘
+```
+
+**C — manual lifecycle (forgettable):**
+```c
+Renderer rend;
+Renderer_Init(&rend, "assets/player.png", "assets/enemy.png");
+// ... 150 lines later, must remember:
+Renderer_Unload(&rend);   // easy to forget = GPU memory leak
+```
+
+**C++ — RAII lifecycle (automatic):**
+```cpp
+Renderer rend("assets/player.png", "assets/enemy.png"); // loads here
+// ... game loop ...
+// ~Renderer() runs automatically — UnloadTexture called for both
+```
+
+---
+
+### 3. AudioManager
+
+**C — public Sound fields, anyone can write to them:**
+```c
+typedef struct {
+    Sound shoot;       // public — anyone could write audio.shoot = ...
+    Sound explosion;
+    Sound levelup;
+} AudioManager;
+
+Audio_PlayShoot(&audio);    // must pass pointer every time
+```
+
+**C++ — private Sound fields, const methods only:**
+```cpp
+class AudioManager {
+public:
+    void playShoot    () const;    // const = cannot accidentally change state
+    void playExplosion() const;
+    void playLevelUp  () const;
+private:
+    Sound shoot_;      // private — callers cannot touch raw Sound objects
+    Sound explosion_;
+    Sound levelup_;
+};
+
+audio.playShoot();             // clean call, no pointer needed
+```
+
+---
+
+### 4. Collision
+
+**C — free functions, no grouping:**
+```c
+bool      CheckCollision       (Rectangle a, Rectangle b);
+Rectangle MakeBulletRect       (float x, float y);
+Rectangle MakePlayerRect       (float x, float y, float w, float h, float s);
+Rectangle MakeEnemyRect        (float x, float y, float w, float h, float s);
+Rectangle MakeShieldPickupRect (float x, float y);
+
+if (CheckCollision(bRect, eRect)) { ... }        // ambiguous — what namespace?
+```
+
+**C++ — `namespace Collision` makes grouping explicit:**
+```cpp
+namespace Collision {
+    bool      check              (Rectangle a, Rectangle b);
+    Rectangle makeBulletRect     (float x, float y);
+    Rectangle makePlayerRect     (float x, float y, float w, float h, float s);
+    Rectangle makeEnemyRect      (float x, float y, float w, float h, float s);
+    Rectangle makeShieldPickupRect(float x, float y);
+}
+
+if (Collision::check(bRect, eRect)) { ... }      // instantly clear what this is
+```
+
+> **Why `namespace` and not `class`?**
+> Collision has no state. Making it a class would require either
+> instantiating a pointless object or making every method `static`.
+> A `namespace` is the correct C++ idiom for stateless helpers.
+
+---
+
+### 5. Player
+
+**C — non-const DrawPlayer, separate init call:**
+```c
+void DrawPlayer(Player *player, Texture2D t, float s, bool shield);
+// compiler cannot stop DrawPlayer from writing to *player
+
+Player player;
+InitPlayer(&player, screenWidth, screenHeight);   // two lines to set up
+DrawPlayer(&player, playerTexture, 0.2f, shieldActive);
+```
+
+**C++ — constructor + const draw:**
+```cpp
+class Player {
+public:
+    Player(int w, int h);                             // replaces InitPlayer()
+    void update(int w, int h);
+    void draw(Texture2D t, float s, bool shield) const; // const = LSP
+};
+
+Player player(SCREEN_W, SCREEN_H);                    // one line to set up
+player.draw(rend.playerTexture, rend.playerScale, shieldActive);
+```
+
+---
+
+### 6. BulletManager
+
+**C — raw array passed to every function:**
+```c
+Bullet bullets[MAX_BULLETS] = {0};    // raw array, manual zero-init
+
+FireBullet  (bullets, player.pos, playerTexture.width * 0.2f);
+UpdateBullets(bullets);
+DrawBullets  (bullets);               // non-const in original C version
+
+for (int i = 0; i < MAX_BULLETS; i++) {
+    if (!bullets[i].active) continue;
+    // collision check with index arithmetic
+}
+```
+
+**C++ — BulletManager owns the array:**
+```cpp
+BulletManager bullets;                // std::array default-initialised
+
+bullets.fire  (player.pos, width);
+bullets.update();
+bullets.draw  ();                     // const method — LSP
+
+for (auto& b : bullets.bullets()) {  // range-for, no index, no overflow risk
+    if (!b.active) continue;
+    // collision check
 }
 ```
 
 ---
 
-### shield.h — renamed and properly split
+### 7. EnemyManager
 
-**BEFORE** — one struct mixed the world pickup with the player's timer:
-
+**C — respawn duplicated twice in main.c:**
 ```c
-// BEFORE — shield.h
-typedef struct {
-    Vector2 pos;
-    bool active;
-    double expireTime;
-} Shield;
-
-void InitShield(Shield *shield);
-void UpdateShield(Shield *shield, bool *playerShield, double currentTime);
-void DrawShield(Shield *shield);     // takes non-const — could mutate state
-```
-
-**AFTER** — renamed to `ShieldPickup`, responsibilities separated,
-`DrawShield` is now `const`, and the player-timer logic gets its own function:
-
-```c
-// AFTER — shield.h
-typedef struct {
-    Vector2 pos;
-    bool    active;
-    double  expireTime;
-} ShieldPickup;
-
-void ShieldPickup_Init  (ShieldPickup *s);
-void ShieldPickup_Spawn (ShieldPickup *s, Vector2 pos,
-                         double currentTime, double durationSeconds);
-void ShieldPickup_Update(ShieldPickup *s, double currentTime);
-void ShieldPickup_Draw  (const ShieldPickup *s);    // LSP: const enforced
-
-// DIP: main.c calls this instead of comparing currentTime > expireTime itself
-void PlayerShield_Update(bool *shieldActive, const ShieldPickup *s,
-                         double currentTime);
-```
-
----
-
-### enemy.h — RespawnEnemy extracted (OCP)
-
-**BEFORE** — enemy reset was a 3-line block copy-pasted twice in `main.c`:
-
-```c
-// BEFORE — inline in main.c, duplicated twice
+// This block appeared in TWO places in main.c
 enemies[j].pos = (Vector2){
     rand() % (screenWidth - (int)(enemyTexture.width * 0.125f)),
     -50 - rand() % 150
@@ -222,207 +365,426 @@ enemies[j].pos = (Vector2){
 enemies[j].speed = 2.0f + 0.5 * (level - 1);
 ```
 
-**AFTER** — one function owns the algorithm:
-
-```c
-// AFTER — enemy.h
-void RespawnEnemy(Enemy *enemy, float speed, int screenWidth);
-
-// AFTER — enemy.c
-void RespawnEnemy(Enemy *enemy, float speed, int screenWidth) {
-    enemy->pos   = (Vector2){
-        (float)(rand() % (screenWidth - 64)),
-        -50.0f - (float)(rand() % 150)
-    };
-    enemy->speed  = speed;
-    enemy->active = true;
+**C++ — `respawn()` is a member, called by reference:**
+```cpp
+// Enemy.cpp — one canonical place
+void EnemyManager::respawn(Enemy& enemy, float speed, int screenWidth)
+{
+    enemy.pos   = { static_cast<float>(rand() % (screenWidth - 64)),
+                    -50.0f - static_cast<float>(rand() % 150) };
+    enemy.speed  = speed;
+    enemy.active = true;
 }
+
+// main.cpp — one clean call, no pointer arithmetic
+enemies.respawn(e, enemySpeed(gs.level), SCREEN_W);  // e is a reference
 ```
 
 ---
 
-### Draw functions — const added everywhere (LSP)
+### 8. ShieldPickup
 
-**BEFORE** — draw functions took mutable pointers; nothing prevented
-accidental state mutation inside a draw call:
+The most transformed module. Five C free functions become one class:
 
-```c
-// BEFORE
-void DrawBullets(Bullet bullets[]);
-void DrawEnemies(Enemy enemies[], Texture2D texture, float scale);
-void DrawPlayer(Player *player, Texture2D texture, float scale, bool shieldActive);
-void DrawShield(Shield *shield);
+```
+C free functions                    C++ class
+─────────────────────────────────   ──────────────────────────────────────
+ShieldPickup_Init(&s)           →   ShieldPickup() constructor
+ShieldPickup_Spawn(&s, pos, t)  →   s.spawn(pos, time, duration)
+ShieldPickup_Update(&s, t)      →   s.update(currentTime)
+ShieldPickup_Draw(&s)           →   s.draw()  [const]
+PlayerShield_Update(&b, &s, t)  →   ShieldPickup::updatePlayerShield(b,s,t)
+                                    ↑ static — no instance needed
 ```
 
-**AFTER** — `const` is enforced at compile time across every draw function:
-
+**C — raw field access, pointer everywhere:**
 ```c
-// AFTER
-void DrawBullets (const Bullet bullets[]);
-void DrawEnemies (const Enemy enemies[], Texture2D texture, float scale);
-void DrawPlayer  (const Player *player, Texture2D texture, float scale, bool shieldActive);
-void ShieldPickup_Draw(const ShieldPickup *s);
-void DrawStars   (const Star stars[]);
+ShieldPickup shield;
+ShieldPickup_Init(&shield);
+
+// In collision handler — raw field writes scattered in main.c
+if (rand() % 100 < 60) {
+    shield.pos        = killPos;
+    shield.active     = true;
+    shield.expireTime = currentTime + 5.0;   // magic number in main
+}
+PlayerShield_Update(&shieldActive, &shield, currentTime);
+```
+
+**C++ — encapsulated, no raw field access needed:**
+```cpp
+ShieldPickup shield;                          // default constructed
+
+// In collision handler — one call, duration is a parameter (OCP)
+if (rand() % 100 < 60)
+    shield.spawn(killPos, currentTime, 5.0);
+
+// Static method — no instance pointer, still part of the class (DIP)
+ShieldPickup::updatePlayerShield(shieldActive, shield, currentTime);
 ```
 
 ---
 
-## 🧱 SOLID Principles Applied
+### 9. Starfield
 
-### S — Single Responsibility Principle (SRP)
+The C version had a subtle bug: `DrawStars(Star stars[])` was not `const`.
+C++ fixes this, and the constructor replaces the separate `InitStars()` call.
+
+**C — draw was not const, separate init:**
+```c
+Star stars[MAX_STARS];
+InitStars(stars, screenWidth, screenHeight);    // separate call required
+DrawStars(stars);                               // NOT const — silent risk
+```
+
+**C++ — constructor + const draw:**
+```cpp
+Starfield stars(SCREEN_W, SCREEN_H);    // initialised in constructor
+stars.draw();                           // const — compiler prevents all mutation
+```
+
+---
+
+## 🧱 SOLID Principles Deep Dive
+
+### S — Single Responsibility Principle
 
 > *"A module should have one, and only one, reason to change."*
 
-Every `.c` file in the refactored project has exactly one job:
+```
+┌──────────────────────┬────────────────────────────────────────────┐
+│ File                 │ Its single reason to change                │
+├──────────────────────┼────────────────────────────────────────────┤
+│ main.cpp             │ Game loop structure changes                │
+│ GameState.cpp        │ Scoring or level-progression rules         │
+│ Renderer.cpp         │ Texture format or loading library          │
+│ AudioManager.cpp     │ Sound format or audio library              │
+│ Collision.cpp        │ Overlap algorithm or rectangle sizing      │
+│ Player.cpp           │ Player movement or visual appearance       │
+│ Bullet.cpp           │ Bullet speed, appearance, or firing logic  │
+│ Enemy.cpp            │ Enemy movement, spawn rules, or appearance │
+│ ShieldPickup.cpp     │ Pickup spawn, expiry, or display           │
+│ Starfield.cpp        │ Background star speed or visual style      │
+└──────────────────────┴────────────────────────────────────────────┘
+```
 
-| Module | Its single responsibility | Reason it would change |
-|---|---|---|
-| `main.c` | Game loop orchestration | Loop structure changes |
-| `renderer.c` | Texture loading/unloading | Asset format changes |
-| `audio.c` | Sound loading/playback | Audio library changes |
-| `collision.c` | Overlap detection + rect building | Collision algorithm changes |
-| `game_state.c` | Score, high-score, level | Scoring rules change |
-| `player.c` | Player movement + drawing | Movement mechanics change |
-| `bullet.c` | Bullet firing + movement + drawing | Bullet behaviour changes |
-| `enemy.c` | Enemy spawning + movement + drawing | Enemy behaviour changes |
-| `shield.c` | Shield pickup lifecycle | Pickup mechanic changes |
-| `starfield.c` | Background star scrolling | Visual style changes |
-
-**In the original code,** `main.c` had 9 reasons to change simultaneously.
-Touching one concern required understanding the entire 150-line file.
+Before the refactor, `main.c` had **9 reasons to change** — scoring,
+leveling, collision maths, rectangle building, asset loading, sound calls,
+shield timing, enemy respawning, and drawing. One change touched everything.
 
 ---
 
-### O — Open/Closed Principle (OCP)
+### O — Open/Closed Principle
 
-> *"Software entities should be open for extension, closed for modification."*
+> *"Open for extension, closed for modification."*
 
-Three concrete examples in this project:
+```
+Extension point          Location             How to extend
+─────────────────────    ─────────────────    ──────────────────────────
+Difficulty curve         enemySpeed() in      Change return formula —
+                         main.cpp             zero other files change
 
-**1. Difficulty curve — `EnemySpeed()` in `main.c`**
+Level-up rule            GameState::          Switch from time-based to
+                         tryLevelUp()         score-based — main.cpp untouched
 
-```c
-// One function. Change the curve — nothing else touches it.
-static float EnemySpeed(int level) {
-    return 2.0f + 0.5f * (float)(level - 1);
-}
-// Want exponential scaling? Change only this line.
-// return 1.5f * powf(1.2f, (float)(level - 1));
+Shield drop duration     ShieldPickup::       Change the durationSeconds
+                         spawn() parameter    value at call site
+
+Enemy respawn pattern    EnemyManager::       Add new logic — init()
+                         respawn()            and update() untouched
 ```
 
-**2. Level-up rule — `GameState_TryLevelUp()` in `game_state.c`**
-
-```c
-// Currently time-based. Switch to score-based by editing only this function.
-bool GameState_TryLevelUp(GameState *gs, double currentTime,
-                          double intervalSeconds) {
-    if (currentTime - gs->lastLevelUpTime >= intervalSeconds) {
-        gs->level++;
-        gs->lastLevelUpTime = currentTime;
-        return true;
-    }
-    return false;
+Example — changing the difficulty curve:
+```cpp
+// Current
+static float enemySpeed(int level) {
+    return 2.0f + 0.5f * static_cast<float>(level - 1);
 }
-// main.c never changes — it just calls GameState_TryLevelUp().
-```
 
-**3. Enemy respawn — `RespawnEnemy()` in `enemy.c`**
-
-```c
-// Want formation spawning? Extend this function — main.c is untouched.
-void RespawnEnemy(Enemy *enemy, float speed, int screenWidth) {
-    enemy->pos   = (Vector2){
-        (float)(rand() % (screenWidth - 64)),
-        -50.0f - (float)(rand() % 150)
-    };
-    enemy->speed  = speed;
-    enemy->active = true;
+// Want exponential scaling? Change only this function:
+static float enemySpeed(int level) {
+    return 1.5f * std::pow(1.2f, static_cast<float>(level - 1));
 }
+// EnemyManager, GameState, main loop — all untouched.
 ```
 
 ---
 
-### L — Liskov Substitution Principle (LSP)
+### L — Liskov Substitution Principle
 
-> *"Subtypes must be substitutable for their base types without altering
-> the correctness of the program."*
+> *"Objects of a subtype must be substitutable for their base type
+> without altering correctness."*
 
-In C, LSP is applied through **consistent contracts on functions**.
-The key enforcement here is `const` on all draw functions:
+In C++, LSP is enforced through **`const` member methods**.
 
-```c
-// Every Draw* function guarantees: calling it never changes game state.
-void DrawBullets (const Bullet bullets[]);
-void DrawEnemies (const Enemy enemies[], Texture2D texture, float scale);
-void DrawPlayer  (const Player *player, Texture2D texture, float scale, bool shieldActive);
-void ShieldPickup_Draw(const ShieldPickup *s);
-void DrawStars   (const Star stars[]);
+```
+C:   const Bullet bullets[]        ← const on parameter (weak)
+C++: void BulletManager::draw() const  ← const on method (strong)
 ```
 
-The same contract applies to `RespawnEnemy()` — any `Enemy*` can be passed
-and the behaviour is identical regardless of prior state:
+The `const` keyword after a method name tells the compiler: **this method
+cannot modify any member variable**. This is stronger than the C version,
+where `const` only protected the parameter, not the entire object.
 
-```c
-// LSP: the contract holds for every Enemy, active or inactive
-void RespawnEnemy(Enemy *enemy, float speed, int screenWidth);
+Every draw method in the project uses this guarantee:
+
+```cpp
+void BulletManager::draw ()                              const;
+void EnemyManager::draw  (Texture2D t, float s)         const;
+void Player::draw        (Texture2D t, float s, bool b)  const;
+void ShieldPickup::draw  ()                              const;
+void Starfield::draw     ()                              const;
 ```
 
-**Before the refactor,** `DrawShield(Shield *shield)` took a non-const pointer.
-Nothing stopped the function from accidentally writing to `shield->active`
-inside a draw call. The compiler gave no warning.
+The contract is clear: calling `draw()` on any object **cannot** change
+the game state. Any caller can depend on this — enforced at compile time.
 
 ---
 
-### I — Interface Segregation Principle (ISP)
+### I — Interface Segregation Principle
 
 > *"Clients should not be forced to depend on interfaces they do not use."*
 
-Every header is as small as it can be:
+```
+AudioManager.hpp  declares:  AudioManager ctor/dtor + 3 play methods
+                  does NOT:  mention Renderer, Enemy, or Collision
 
-| Header | Declarations inside |
-|---|---|
-| `renderer.h` | `Renderer` struct · `Renderer_Init` · `Renderer_Unload` |
-| `audio.h` | `AudioManager` struct · `Audio_Init` · `Audio_Unload` · 3× `Audio_Play*` |
-| `collision.h` | `CheckCollision` · 4× `Make*Rect` |
-| `game_state.h` | `GameState` struct · `Init` · `AddScore` · `TryLevelUp` · `Reset` |
-| `shield.h` | `ShieldPickup` struct · 4 pickup functions · `PlayerShield_Update` |
+Collision.hpp     declares:  check() + 4 make*Rect() helpers
+                  does NOT:  mention Player, Bullet, or Audio
 
-A file that only needs to play a sound includes `audio.h` — it does **not**
-get `Renderer`, `Enemy`, or collision rectangles dragged in with it.
+ShieldPickup.hpp  declares:  ShieldPickup class + 4 methods + 1 static
+                  does NOT:  mention GameState or Renderer
 
-**Before:** a hypothetical `utils.h` would have forced every file to include
-everything. With one giant header, changing any declaration recompiles the
-entire project.
+Starfield.hpp     declares:  Star struct + Starfield class + 3 methods
+                  does NOT:  mention any other game object
+```
+
+A translation unit that only needs collision detection includes only
+`Collision.hpp`. It does not get `AudioManager`, `Renderer`, or `Enemy`
+dragged in with it. If you add a new module, existing headers are never
+modified — only new ones are created.
 
 ---
 
-### D — Dependency Inversion Principle (DIP)
+### D — Dependency Inversion Principle
 
 > *"High-level modules should not depend on low-level modules.
 > Both should depend on abstractions."*
 
-`main.c` is the high-level policy module. In the original code it depended
-**directly** on raylib for 14+ operations. After refactoring, every one of
-those dependencies is inverted:
+`main.cpp` is the high-level policy. It depends on **class interfaces**,
+never on raylib:
 
-| `main.c` now calls | Instead of (raylib directly) |
-|---|---|
-| `Renderer_Init(&rend, ...)` | `LoadTexture(...)` ×2 |
-| `Renderer_Unload(&rend)` | `UnloadTexture(...)` ×2 |
-| `Audio_PlayShoot(&audio)` | `PlaySound(shootSound)` |
-| `Audio_PlayExplosion(&audio)` | `PlaySound(explosionSound)` |
-| `Audio_PlayLevelUp(&audio)` | `PlaySound(levelupSound)` |
-| `CheckCollision(a, b)` | `CheckCollisionRecs(a, b)` |
-| `MakeBulletRect(x, y)` | `(Rectangle){ x-2, y-2, 4, 4 }` inline |
-| `MakeEnemyRect(x, y, ...)` | `(Rectangle){ x, y, w*0.125, h*0.125 }` inline |
-| `GameState_AddScore(&gs, 10)` | `score += 10; if (score > highScore)...` |
-| `GameState_TryLevelUp(...)` | `if (currentTime - lastLevelUpTime > 60.0)` |
-| `PlayerShield_Update(...)` | `if (*playerShield && currentTime > shield.expireTime)` |
-| `RespawnEnemy(&enemies[j], ...)` | 3-line inline reset block ×2 |
-| `ShieldPickup_Spawn(...)` | `shield.pos = ...; shield.active = true; shield.expireTime = ...` |
+```
+main.cpp calls               Instead of (raw raylib)
+──────────────────────────   ────────────────────────────────
+Renderer(path, path)     →   LoadTexture() x2
+~Renderer() [auto]       →   UnloadTexture() x2
+audio.playShoot()        →   PlaySound(shootSound)
+audio.playExplosion()    →   PlaySound(explosionSound)
+audio.playLevelUp()      →   PlaySound(levelupSound)
+Collision::check(a, b)   →   CheckCollisionRecs(a, b)
+Collision::make*Rect(.)  →   Inline Rectangle{ ... } literals
+gs.addScore(10)          →   score += 10; if(score > high)...
+gs.tryLevelUp(t, 60.0)   →   if(currentTime - lastTime > 60.0)
+ShieldPickup::update...  →   if(currentTime > expireTime)
+enemies.respawn(e, ...)  →   3-line inline reset block x2
+shield.spawn(...)        →   shield.pos=...; active=true; ...
+```
 
-**Consequence:** swapping raylib for a different graphics library only requires
-editing the module `.c` files. `main.c` stays completely unchanged.
+Swapping raylib for a different library only requires changing the module
+`.cpp` files. `main.cpp` never changes.
+
+---
+
+## 🔄 Game Loop Flowchart
+
+```
+                    ┌─────────────────────┐
+                    │    Program Start     │
+                    │  InitWindow()        │
+                    │  InitAudioDevice()   │
+                    │  srand()             │
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────▼────────────────┐
+              │  RAII Constructors run:          │
+              │  Renderer  ← LoadTexture x2      │
+              │  AudioMgr  ← LoadSound x3        │
+              │  Player, BulletMgr, EnemyMgr,    │
+              │  ShieldPickup, Starfield,         │
+              │  GameState                        │
+              └────────────────┬────────────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │   Start Screen      │
+                    │  Draw title text    │
+                    │  Wait for ENTER     │
+                    └──────────┬──────────┘
+                               │ ENTER pressed
+                    ┌──────────▼──────────┐
+                    │  Main Game Loop     │◄──────────────────┐
+                    └──────────┬──────────┘                   │
+                               │                             │
+               ┌───────────────▼────────────────┐            │
+               │  1. player.update()             │            │
+               │     arrow key input             │            │
+               └───────────────┬────────────────┘            │
+               ┌───────────────▼────────────────┐            │
+               │  2. gs.tryLevelUp()             │            │
+               │     60 sec elapsed?             │            │
+               │     yes → audio.playLevelUp()   │            │
+               └───────────────┬────────────────┘            │
+               ┌───────────────▼────────────────┐            │
+               │  3. SPACE pressed?              │            │
+               │     bullets.fire()              │            │
+               │     audio.playShoot()           │            │
+               └───────────────┬────────────────┘            │
+               ┌───────────────▼────────────────┐            │
+               │  4. bullets.update()            │            │
+               │     enemies.update()            │            │
+               │     stars.update()              │            │
+               │     shield.update()             │            │
+               │     ShieldPickup::update...     │            │
+               └───────────────┬────────────────┘            │
+               ┌───────────────▼────────────────┐            │
+               │  5. Bullet vs Enemy collision   │            │
+               │     hit? ──► respawn enemy      │            │
+               │             playExplosion()     │            │
+               │             60%: shield.spawn() │            │
+               │             gs.addScore(10)     │            │
+               └───────────────┬────────────────┘            │
+               ┌───────────────▼────────────────┐            │
+               │  6. Player vs Enemy collision   │            │
+               │     hit, no shield?             │            │
+               │       ──► reset player          │            │
+               │           reset enemies         │            │
+               │           gs.reset()            │            │
+               │     hit, shield active?         │            │
+               │       ──► shieldActive = false  │            │
+               └───────────────┬────────────────┘            │
+               ┌───────────────▼────────────────┐            │
+               │  7. Player vs ShieldPickup      │            │
+               │     collect? shieldActive=true  │            │
+               └───────────────┬────────────────┘            │
+               ┌───────────────▼────────────────┐            │
+               │  8. BeginDrawing()              │            │
+               │     stars.draw()       const    │            │
+               │     player.draw()      const    │            │
+               │     bullets.draw()     const    │            │
+               │     enemies.draw()     const    │            │
+               │     shield.draw()      const    │            │
+               │     DrawText(HUD)               │            │
+               │     EndDrawing()                │            │
+               └───────────────┬────────────────┘            │
+                               │                             │
+                     WindowShouldClose? ────────── No ───────┘
+                               │ Yes
+                    ┌──────────▼──────────┐
+                    │   Shutdown          │
+                    │  CloseAudioDevice() │
+                    │  CloseWindow()      │
+                    │  ~AudioManager()    │
+                    │  ~Renderer()        │
+                    └─────────────────────┘
+```
+
+---
+
+## ♻ RAII Lifecycle Diagram
+
+```
+  Timeline of a single program run:
+  ════════════════════════════════════════════════════════════════
+
+  main() begins
+      │
+      ├─► Renderer rend(...)        constructor: LoadTexture x2 ✓
+      │
+      ├─► AudioManager audio(...)   constructor: LoadSound x3 ✓
+      │
+      ├─► Player, BulletManager,
+      │   EnemyManager, ShieldPickup,
+      │   Starfield, GameState       constructors: set initial state ✓
+      │
+      ├──────────────────────────────────────────────────────────
+      │             GAME LOOP RUNS (60 fps)
+      ├──────────────────────────────────────────────────────────
+      │
+      ├─► CloseAudioDevice()        explicit (raylib global)
+      ├─► CloseWindow()             explicit (raylib global)
+      │
+      │   } end of main() scope
+      │
+      ├─► ~AudioManager() runs      UnloadSound x3 ← automatic ✓
+      └─► ~Renderer() runs          UnloadTexture x2 ← automatic ✓
+
+  ════════════════════════════════════════════════════════════════
+
+  C version required:               C++ version:
+  ──────────────────────────────    ────────────────────────────
+  Audio_Unload(&audio);   ← MUST    automatic — cannot forget
+  Renderer_Unload(&rend); ← MUST    automatic — cannot forget
+  (forget either = silent leak)     (forget = impossible)
+```
+
+---
+
+## 💥 Collision System Diagram
+
+```
+  Every frame — 3 collision checks:
+  ════════════════════════════════════════════════════════════════
+
+  CHECK 1: Bullet vs Enemy
+  ─────────────────────────────────────────────────────────────
+  for each active Bullet b:
+    │
+    bRect = Collision::makeBulletRect(b.pos.x, b.pos.y)
+    │       → Rectangle{ x-2, y-2, 4, 4 }
+    │
+    for each active Enemy e:
+      │
+      eRect = Collision::makeEnemyRect(e.pos.x, e.pos.y, w, h, scale)
+      │       → Rectangle{ x, y, texW*scale, texH*scale }
+      │
+      Collision::check(bRect, eRect)?
+      │   YES ──► b.active = false
+      │            enemies.respawn(e, speed, SCREEN_W)   [OCP]
+      │            audio.playExplosion()                  [DIP]
+      │            rand%100 < 60 → shield.spawn(...)     [OCP]
+      │            gs.addScore(10)                        [SRP]
+      │            break
+      │   NO  ──► continue to next enemy
+
+
+  CHECK 2: Player vs Enemy
+  ─────────────────────────────────────────────────────────────
+  pRect = Collision::makePlayerRect(player.pos, w, h, scale)
+
+  for each active Enemy e:
+    eRect = Collision::makeEnemyRect(e.pos, w, h, scale)
+    │
+    Collision::check(pRect, eRect)?
+    │   YES + !shieldActive ──► player = Player(W, H)   reset
+    │                            enemies.init(speed, W)  reset
+    │                            gs.reset(time)          [SRP]
+    │   YES + shieldActive  ──► shieldActive = false     absorb
+    │   NO                  ──► continue
+
+
+  CHECK 3: Player vs ShieldPickup
+  ─────────────────────────────────────────────────────────────
+  if shield.active:
+    pRect = Collision::makePlayerRect(...)
+    sRect = Collision::makeShieldPickupRect(shield.pos.x, shield.pos.y)
+    │       → Rectangle{ x-10, y-10, 20, 20 }
+    │
+    Collision::check(pRect, sRect)?
+        YES ──► shieldActive  = true
+                shield.active = false
+
+  ════════════════════════════════════════════════════════════════
+```
 
 ---
 
@@ -430,199 +792,210 @@ editing the module `.c` files. `main.c` stays completely unchanged.
 
 ### Prerequisites
 
-- [raylib](https://www.raylib.com/) installed on your system
-- GCC (MinGW on Windows, system GCC on Linux/macOS)
-- VS Code with the C/C++ extension
+| Tool | Version | Notes |
+|---|---|---|
+| [raylib](https://www.raylib.com/) | 5.x | System-wide install |
+| g++ | C++17 support | MinGW on Windows; system g++ on Linux/macOS |
+| VS Code | Any | C/C++ extension recommended |
 
-### Build via VS Code
+### Build in VS Code
 
-Press `Ctrl+Shift+B` — this runs the **Build SpaceShooter** task defined
-in `.vscode/tasks.json`.
+```
+Ctrl + Shift + B
+```
 
-### Build via terminal
+Runs **Build SpaceShooter (C++)** from `.vscode/tasks.json`.
+
+### Build in terminal
 
 ```bash
-gcc main.c renderer.c audio.c collision.c game_state.c \
-    player.c bullet.c enemy.c shield.c starfield.c \
+g++ -std=c++17 \
+    main.cpp Renderer.cpp AudioManager.cpp Collision.cpp \
+    GameState.cpp Player.cpp Bullet.cpp Enemy.cpp \
+    ShieldPickup.cpp Starfield.cpp \
     -lraylib -lm -o SpaceShooter
-
-or,  ./Debug/SpaceShooter.exe
 ```
 
 ### Run
 
 ```bash
 ./SpaceShooter        # Linux / macOS
-SpaceShooter.exe      # Windows
+./Debug/SpaceShooter.exe      # Windows
 ```
 
-> **Important:** run from inside the `SpaceShooter/` folder so the
-> `assets/` path resolves correctly.
+> Run from inside the `SpaceShooterCPP/` folder so `assets/` resolves correctly.
 
 ---
 
 ## 🌿 Git Workflow
 
-This project follows the instructions for branching and committing one
-SOLID principle at a time.
-
 ```bash
-# Step 1 — original code already on main/trunk
+# Branch from the SOLID C version
+git checkout solid-refactor
+git checkout -b cpp-conversion
 
-# Step 2 — create the refactor branch
-git checkout -b solid-refactor
+# One commit per converted module — clean, traceable history
+git add GameState.hpp GameState.cpp
+git commit -m "cpp: game_state → GameState class with constructor/reset"
 
-# Step 3 — commit each SOLID principle separately
-git add game_state.h game_state.c
-git commit -m "SRP: extract game_state module — score and level have one home"
+git add Renderer.hpp Renderer.cpp
+git commit -m "cpp: renderer → Renderer class with RAII destructor"
 
-git add renderer.h renderer.c audio.h audio.c
-git commit -m "SRP + ISP: extract renderer and audio into focused single-concern modules"
+git add AudioManager.hpp AudioManager.cpp
+git commit -m "cpp: audio → AudioManager RAII + private fields + const methods"
 
-git add collision.h collision.c
-git commit -m "ISP + DIP: extract collision module — main.c no longer calls raylib for overlap tests"
+git add Collision.hpp Collision.cpp
+git commit -m "cpp: collision → namespace Collision with make*Rect helpers"
 
-git add enemy.h enemy.c
-git commit -m "OCP: add RespawnEnemy() — respawn algorithm lives in exactly one place"
+git add Player.hpp Player.cpp
+git commit -m "cpp: player → Player class; draw() is now a const method"
 
-git add bullet.h bullet.c player.h player.c shield.h shield.c starfield.h starfield.c
-git commit -m "LSP: enforce const on all Draw* functions — drawing never mutates state"
+git add Bullet.hpp Bullet.cpp
+git commit -m "cpp: bullet → BulletManager with std::array"
 
-git add main.c
-git commit -m "DIP: main.c depends on module abstractions only — zero direct raylib calls for audio/collision/assets"
+git add Enemy.hpp Enemy.cpp
+git commit -m "cpp: enemy → EnemyManager with std::array + respawn()"
 
-git add README.md .vscode/tasks.json .gitignore
-git commit -m "docs: add README with SOLID explanation and VS Code build config"
+git add ShieldPickup.hpp ShieldPickup.cpp
+git commit -m "cpp: shield → ShieldPickup class; updatePlayerShield() static"
 
-# Step 4 — push to GitHub
-git push origin solid-refactor
+git add Starfield.hpp Starfield.cpp
+git commit -m "cpp: starfield → Starfield class; draw() now const (C was missing)"
+
+git add main.cpp .vscode/tasks.json .gitignore README.md
+git commit -m "cpp: main.c → main.cpp; RAII removes all manual Init/Unload calls"
+
+# Push to GitHub
+git push origin cpp-conversion
 ```
 
-Then open a **Pull Request** from `solid-refactor` → `main` on GitHub.
-Each commit maps to exactly one SOLID principle — reviewers can follow
-the transformation step by step.
+Open a **Pull Request** from `cpp-conversion` → `solid-refactor` on GitHub.
 
 ---
 
-## 🤖 AI Prompts That Generated This Refactor
+## 🤖 AI Prompts Used
 
-The following prompts were used with an AI assistant (Claude) to produce
-the SOLID-refactored version of this project. They are included here so
-any team member can reproduce, extend, or re-prompt for further changes.
-
----
-
-### Prompt 1 — Understanding the task
+### Prompt 1 — Full C to C++ conversion
 
 ```
-I have a C game project (Space Shooter using raylib) with these files:
-main.c, bullet.h/c, enemy.h/c, player.h/c, shield.h/c, starfield.h/c.
+I have a SOLID-refactored Space Shooter game in C using raylib.
+Here are all source files: [attach all .h and .c files]
 
-Explain step by step how to refactor a C project into SOLID OOD:
-Step 1: original code on GitHub trunk
-Step 2: create a branch called solid-refactor
-Step 3: apply SRP, OCP, LSP, ISP, DIP to the project
-Step 4: commit changes to GitHub
-
-Explain each principle clearly with examples before I start coding.
-```
-
----
-
-### Prompt 2 — Full refactor with source files
-
-```
-Here are all my C source files for a Space Shooter game using raylib:
-[attached: main.c, bullet.h, bullet.c, enemy.h, enemy.c,
-           player.h, player.c, shield.h, shield.c,
-           starfield.h, starfield.c]
-
-Apply all five SOLID principles properly to this exact project:
-- SRP: every .c file must have one reason to change
-- OCP: isolate things that change (speed formula, level-up rule, respawn)
-- LSP: enforce const on all Draw* functions
-- ISP: each header declares only its own concerns
-- DIP: main.c must not call raylib directly for audio, collision, or assets
-
-Create new modules where needed (renderer, audio, collision, game_state).
-Keep the gameplay 100% identical. Add SOLID comments to every file.
+Convert the entire project to C++17 with these exact rules:
+1. Every C typedef struct + free functions → C++ class with
+   constructor and destructor
+2. Use RAII: constructor loads assets, destructor unloads automatically
+3. Free functions like Audio_PlayShoot(&a) → const member methods
+   like a.playShoot()
+4. Collision free functions → namespace Collision { check(), make*Rect() }
+5. Raw C arrays → std::array with range-based for loops
+6. C-style casts (float)x → static_cast<float>(x)
+7. const parameter → const member method: void draw() const
+8. File extensions: .hpp and .cpp, PascalCase filenames
+9. Keep ALL 5 SOLID principles with SRP/OCP/LSP/ISP/DIP comments
+10. Do NOT add any new gameplay features — pure language conversion only
+11. Include .vscode/tasks.json using g++ -std=c++17
+12. Keep identical gameplay — same speed, scoring, and controls
 ```
 
 ---
 
-### Prompt 3 — File structure for VS Code
+### Prompt 2 — README with diagrams
 
 ```
-In these screenshots of my Windows Explorer folder, which files should
-I keep, which should I replace, and which new files should I add so that
-I can run the SOLID-refactored Space Shooter project through VS Code?
+Write a complete professional GitHub README.md for my C++17 SOLID
+Space Shooter project. Include:
 
-Also give me a proper .vscode/tasks.json so I can build and run with
-Ctrl+Shift+B without needing Visual Studio.
-```
-
----
-
-### Prompt 4 — README generation
-
-```
-Create a professional, attractive, fully informative GitHub README.md
-for my SOLID-refactored Space Shooter C project. Include:
-
-1. Game overview with controls table
-2. Full project structure diagram
-3. Before vs After code comparisons for the most important changes
-   (main.c, shield.h, enemy respawn, Draw* functions)
-4. A section for each SOLID principle with clear explanation +
-   concrete code examples from this actual project
-5. Build instructions for VS Code and terminal
-6. Git workflow with one commit per principle
-7. The AI prompts that were used to generate this refactor
-
-Make it well-structured with headers, tables, and code blocks.
+1. ASCII architecture diagram showing all modules and how main.cpp
+   sits above them with raylib below
+2. Full C vs C++ conversion table covering every language-level change
+3. Side-by-side C vs C++ code comparisons for EVERY module using
+   exact code from the real files
+4. Explanation of why namespace was used for Collision instead of class
+5. A section for each SOLID principle with ASCII table or diagram
+   showing exactly where it is applied in the C++ code
+6. ASCII game loop flowchart showing all 8 steps with decision branches
+7. ASCII RAII lifecycle diagram showing constructor/destructor timing
+8. ASCII collision system diagram showing all 3 collision checks
+9. Build instructions using g++ -std=c++17
+10. Git workflow with one commit per module
+11. The AI prompts that generated this project
 ```
 
 ---
 
-### Prompt 5 — Extending the project (future use)
+### Prompt 3 — Add a new enemy type following OCP
 
 ```
-My Space Shooter C project is now SOLID-refactored with these modules:
-renderer, audio, collision, game_state, player, bullet, enemy, shield, starfield.
+In my C++17 Space Shooter, add a BossEnemy that:
+- Is larger than regular enemies (scale 0.3 instead of 0.125)
+- Has 3 hit points and needs 3 bullets to kill
+- Moves in a horizontal sine wave pattern
+- Drops a guaranteed shield pickup when killed
 
-I want to add a new enemy type called "BossEnemy" that is larger,
-has 3 health points, and moves in a sine wave pattern.
+Rules — follow OCP strictly:
+- Do NOT modify EnemyManager, Enemy struct, or main.cpp
+- Create new files only: BossEnemy.hpp and BossEnemy.cpp
+- Follow SRP: BossEnemy.cpp handles only boss state and behaviour
+- Follow ISP: BossEnemy.hpp declares only boss-related things
+- Follow DIP: main.cpp calls BossEnemy methods, not raw fields
+- Follow LSP: BossEnemy::draw() must be const
 
-Following OCP: add this without modifying any existing module.
-Following ISP: create boss_enemy.h with only boss-related declarations.
-Following SRP: boss_enemy.c handles only boss state and behaviour.
-Following DIP: main.c should call BossEnemy functions, not access fields directly.
+Show the complete new files and the minimal additions to main.cpp.
 ```
 
 ---
 
-## 📊 SOLID Principle Summary Table
+### Prompt 4 — Convert to smart pointers
 
-| Principle | Problem it solved | Where applied |
+```
+In my C++17 Space Shooter, convert Renderer and AudioManager in
+main.cpp to use std::unique_ptr for explicit ownership:
+
+  std::unique_ptr<Renderer>     rend;
+  std::unique_ptr<AudioManager> audio;
+
+Rules:
+- Use std::make_unique<>() for construction
+- Access members with rend->playerTexture and audio->playShoot()
+- Explain why std::unique_ptr is appropriate here vs std::shared_ptr
+- Keep all SOLID principles intact
+- Show only the changed parts of main.cpp
+```
+
+---
+
+## 📊 Complete Conversion Summary
+
+| C module | C++ module | Key C++ feature applied |
 |---|---|---|
-| **SRP** | `main.c` had 9 responsibilities | Split into 4 new modules + focused existing ones |
-| **OCP** | Respawn/speed/level-up logic duplicated | `RespawnEnemy()`, `EnemySpeed()`, `GameState_TryLevelUp()` |
-| **LSP** | Draw functions could mutate state | `const` on all `Draw*` parameters |
-| **ISP** | No boundary between audio, render, collision | Separate focused headers for each concern |
-| **DIP** | `main.c` called 14+ raylib APIs directly | All behind `renderer`, `audio`, `collision` abstractions |
+| `game_state.h/c` | `GameState.hpp/cpp` | Constructor replaces Init() |
+| `renderer.h/c` | `Renderer.hpp/cpp` | RAII destructor replaces Unload() |
+| `audio.h/c` | `AudioManager.hpp/cpp` | RAII + `const` methods + `private` fields |
+| `collision.h/c` | `Collision.hpp/cpp` | `namespace` — no class needed |
+| `player.h/c` | `Player.hpp/cpp` | Constructor + `const` draw method |
+| `bullet.h/c` | `Bullet.hpp/cpp` | `BulletManager` + `std::array` |
+| `enemy.h/c` | `Enemy.hpp/cpp` | `EnemyManager` + `std::array` + ref respawn |
+| `shield.h/c` | `ShieldPickup.hpp/cpp` | `static` helper method |
+| `starfield.h/c` | `Starfield.hpp/cpp` | Constructor + `const` draw (bug fix from C) |
+| `main.c` | `main.cpp` | RAII, range-for, `static_cast`, no manual cleanup |
 
 ---
 
 ## 🔧 Technologies
 
-- **Language:** C (C99)
-- **Graphics/Audio:** [raylib 5.x](https://www.raylib.com/)
-- **Build:** GCC / MinGW
-- **Editor:** VS Code
-- **Version Control:** Git + GitHub
+| Tool | Role |
+|---|---|
+| **C++17** | Language |
+| **raylib 5.x** | Graphics and audio |
+| **g++ / MinGW** | Compiler |
+| **std::array** | Fixed-size arrays — replaces raw C arrays |
+| **RAII** | Automatic resource management |
+| **VS Code** | Editor |
+| **Git + GitHub** | Version control |
 
 ---
 
-*Refactored as part of Advanced Programming Lab — demonstrating SOLID
-Object-Oriented Design principles applied to a procedural C codebase.*
-
+*Converted from the C SOLID version as part of Advanced Programming Lab —
+demonstrating how SOLID Object-Oriented Design principles translate
+naturally and more powerfully into idiomatic C++17.*
