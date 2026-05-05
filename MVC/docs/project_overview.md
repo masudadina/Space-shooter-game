@@ -530,217 +530,214 @@ The game initializes with `GameController` from `main.cpp`:
 
 ---
 
-## UML Class Diagram
+# SpaceShooter — UML Class Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        SPACE SHOOTER MVC ARCHITECTURE                        │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+classDiagram
 
-                            ┌──────────────────┐
-                            │   main.cpp       │
-                            │                  │
-                            │  int main()      │
-                            │  └─ runs         │
-                            │     GameController│
-                            └────────┬─────────┘
-                                     │
-                                     ▼
-                ╔═════════════════════════════════════════╗
-                ║     🎮 CONTROLLER LAYER                 ║
-                ╠═════════════════════════════════════════╣
-                ║         GameController                  ║
-                ╠═════════════════════════════════════════╣
-                ║ - player: Player                        ║
-                ║ - bullets: BulletManager                ║
-                ║ - enemies: EnemyManager                 ║
-                ║ - shield: ShieldPickup                  ║
-                ║ - stars: Starfield                      ║
-                ║ - gs: GameState                         ║
-                ║ - rend: Renderer                        ║
-                ║ - audio: AudioManager                   ║
-                ║ - shieldActive: bool                    ║
-                ╠═════════════════════════════════════════╣
-                ║ + run()                                 ║
-                ║ + processInput()                        ║
-                ║ + update()                              ║
-                ║ + handleCollisions()                    ║
-                ║ + render()                              ║
-                ║ + enemySpeed(level): float              ║
-                ╚═════════════════════════════════════════╝
-                    ▲           ▲           ▲
-        ┌───────────┘           │           └──────────────┐
-        │                       │                          │
-        ▼                       ▼                          ▼
-    ┌────────────┐     ┌──────────────┐         ┌──────────────────┐
-    │   Model    │     │     View     │         │   Utilities      │
-    └────────────┘     └──────────────┘         └──────────────────┘
-        │                   │                           │
-        │                   │                           │
-        ▼                   ▼                           ▼
+    %% ───────────────────────────────
+    %% Entry point
+    %% ───────────────────────────────
+    class main {
+        +main() int
+    }
 
-╔════════════════════════════════════════════════════════════════════════════╗
-║                         📊 MODEL LAYER                                     ║
-╠════════════════════════════════════════════════════════════════════════════╣
+    %% ───────────────────────────────
+    %% GameController
+    %% ───────────────────────────────
+    class GameController {
+        -SCREEN_W : int = 1600
+        -SCREEN_H : int = 850
+        -player : Player
+        -bullets : BulletManager
+        -enemies : EnemyManager
+        -shield : ShieldPickup
+        -stars : Starfield
+        -gs : GameState
+        -rend : Renderer
+        -audio : AudioManager
+        -shieldActive : bool
+        +GameController()
+        +run() void
+        -processInput() void
+        -update() void
+        -handleCollisions() void
+        -render() void
+        -enemySpeed(level int) float
+    }
 
-┌──────────────────────┐     ┌──────────────────────┐
-│     Player           │     │   GameState          │
-├──────────────────────┤     ├──────────────────────┤
-│ + pos: Vector2       │     │ + score: int         │
-│ + speed: float       │     │ + highScore: int     │
-├──────────────────────┤     │ + level: int         │
-│ + Player()           │     │ + lastLevelUpTime: d │
-│ + update()           │     ├──────────────────────┤
-│ + draw(const)        │     │ + GameState()        │
-└──────────────────────┘     │ + addScore()         │
-                             │ + tryLevelUp(): bool │
-                             │ + reset()            │
-                             └──────────────────────┘
+    %% ───────────────────────────────
+    %% Player
+    %% ───────────────────────────────
+    class Player {
+        +pos : Vector2
+        +speed : float
+        +Player(screenWidth int, screenHeight int)
+        +update(screenWidth int, screenHeight int) void
+        +draw(texture Texture2D, scale float, shieldActive bool) void
+    }
 
-┌──────────────────────┐     ┌──────────────────────┐
-│  struct Bullet       │     │  struct Enemy        │
-├──────────────────────┤     ├──────────────────────┤
-│ + pos: Vector2       │     │ + pos: Vector2       │
-│ + active: bool       │     │ + active: bool       │
-└──────────────────────┘     │ + speed: float       │
-        ▲                    └──────────────────────┘
-        │                            ▲
-        │                            │
-        │                            │
-┌───────┴──────────────┐  ┌──────────┴────────────┐
-│  BulletManager       │  │  EnemyManager        │
-├──────────────────────┤  ├──────────────────────┤
-│ - bullets_: array[10]│  │ - enemies_: array[10]│
-├──────────────────────┤  ├──────────────────────┤
-│ + fire()             │  │ + init()             │
-│ + update()           │  │ + update()           │
-│ + draw(const)        │  │ + respawn()    [OCP] │
-│ + bullets(): array&  │  │ + draw(const)        │
-└──────────────────────┘  │ + enemies(): array&  │
-                          └──────────────────────┘
+    %% ───────────────────────────────
+    %% Bullet (data struct)
+    %% ───────────────────────────────
+    class Bullet {
+        <<struct>>
+        +pos : Vector2
+        +active : bool
+    }
 
-┌──────────────────────┐     ┌──────────────────────┐
-│  ShieldPickup        │     │  Starfield           │
-├──────────────────────┤     ├──────────────────────┤
-│ + pos: Vector2       │     │ - stars_: array[100] │
-│ + active: bool       │     ├──────────────────────┤
-│ + expireTime: double │     │ + Starfield()        │
-├──────────────────────┤     │ + update()           │
-│ + ShieldPickup()     │     │ + draw(const)        │
-│ + spawn()            │     └──────────────────────┘
-│ + update()           │
-│ + draw(const)        │           struct Star
-│ + updatePlayerShield │     ┌────────────────────┐
-│   (static)           │     │ + pos: Vector2     │
-└──────────────────────┘     │ + speed: float     │
-                             └────────────────────┘
+    %% ───────────────────────────────
+    %% BulletManager
+    %% ───────────────────────────────
+    class BulletManager {
+        -bullets_ : array~Bullet, 10~
+        +fire(playerPos Vector2, playerWidth float) void
+        +update() void
+        +draw() void
+        +bullets() array~Bullet~&
+    }
 
-╔════════════════════════════════════════════════════════════════════════════╗
-║                         🎨 VIEW LAYER                                      ║
-╠════════════════════════════════════════════════════════════════════════════╣
+    %% ───────────────────────────────
+    %% Enemy (data struct)
+    %% ───────────────────────────────
+    class Enemy {
+        <<struct>>
+        +pos : Vector2
+        +active : bool
+        +speed : float
+    }
 
-┌──────────────────────┐     ┌──────────────────────┐
-│  Renderer (RAII)     │     │ AudioManager (RAII)  │
-├──────────────────────┤     ├──────────────────────┤
-│ + playerTexture: T2D │     │ - shoot_: Sound      │
-│ + enemyTexture: T2D  │     │ - explosion_: Sound  │
-│ + playerScale: 0.20  │     │ - levelup_: Sound    │
-│ + enemyScale: 0.125  │     ├──────────────────────┤
-├──────────────────────┤     │ + AudioManager()     │
-│ + Renderer()         │     │ + ~AudioManager()    │
-│ + ~Renderer()        │     │ + playShoot()        │
-└──────────────────────┘     │ + playExplosion()    │
-                             │ + playLevelUp()      │
-                             └──────────────────────┘
+    %% ───────────────────────────────
+    %% EnemyManager
+    %% ───────────────────────────────
+    class EnemyManager {
+        -enemies_ : array~Enemy, 10~
+        +init(speed float, screenWidth int) void
+        +update(speed float, screenWidth int, screenHeight int, playerPos Vector2) void
+        +respawn(enemy Enemy&, speed float, screenWidth int) void
+        +draw(texture Texture2D, scale float) void
+        +enemies() array~Enemy~&
+    }
 
-╔════════════════════════════════════════════════════════════════════════════╗
-║                      🔍 UTILITY LAYER                                      ║
-╠════════════════════════════════════════════════════════════════════════════╣
+    %% ───────────────────────────────
+    %% ShieldPickup
+    %% ───────────────────────────────
+    class ShieldPickup {
+        +pos : Vector2
+        +active : bool
+        +expireTime : double
+        +ShieldPickup()
+        +spawn(killPos Vector2, currentTime double, durationSeconds double) void
+        +update(currentTime double) void
+        +draw() void
+        +updatePlayerShield(shieldActive bool&, s ShieldPickup, currentTime double)$ void
+    }
 
-namespace Collision
-├─ check(Rectangle, Rectangle): bool
-├─ makeBulletRect(x, y): Rectangle
-├─ makePlayerRect(x, y, w, h, scale): Rectangle
-├─ makeEnemyRect(x, y, w, h, scale): Rectangle
-└─ makeShieldPickupRect(x, y): Rectangle
+    %% ───────────────────────────────
+    %% Starfield
+    %% ───────────────────────────────
+    class Star {
+        <<struct>>
+        +pos : Vector2
+        +speed : float
+    }
 
-╚════════════════════════════════════════════════════════════════════════════╝
-```
+    class Starfield {
+        -stars_ : array~Star, 100~
+        +Starfield(screenWidth int, screenHeight int)
+        +update(screenWidth int, screenHeight int) void
+        +draw() void
+    }
 
-### UML Component Relationships
+    %% ───────────────────────────────
+    %% GameState
+    %% ───────────────────────────────
+    class GameState {
+        +score : int
+        +highScore : int
+        +level : int
+        +lastLevelUpTime : double
+        +GameState(startTime double)
+        +addScore(points int) void
+        +tryLevelUp(currentTime double, intervalSeconds double) bool
+        +reset(currentTime double) void
+    }
 
-```
-Data Flow During Game Loop:
+    %% ───────────────────────────────
+    %% Renderer
+    %% ───────────────────────────────
+    class Renderer {
+        +playerTexture : Texture2D
+        +enemyTexture : Texture2D
+        +playerScale : float
+        +enemyScale : float
+        +Renderer(playerPath string, enemyPath string)
+        +~Renderer()
+    }
 
-GameController
-    ├─→ processInput()
-    │   └─→ Player.update()  ────→ (arrow key input)
-    │   └─→ BulletManager.fire()  ────→ (SPACE key input)
-    │
-    ├─→ update()
-    │   ├─→ GameState.tryLevelUp()
-    │   ├─→ BulletManager.update()
-    │   ├─→ EnemyManager.update()
-    │   ├─→ Starfield.update()
-    │   └─→ ShieldPickup.update()
-    │
-    ├─→ handleCollisions()
-    │   ├─→ Collision::check()  ← bullet vs enemy
-    │   ├─→ EnemyManager.respawn()
-    │   ├─→ ShieldPickup.spawn()  ← 60% chance
-    │   ├─→ GameState.addScore()
-    │   └─→ AudioManager.playExplosion()
-    │
-    └─→ render()
-        ├─→ Starfield.draw()
-        ├─→ Player.draw()
-        ├─→ BulletManager.draw()
-        ├─→ EnemyManager.draw()
-        ├─→ ShieldPickup.draw()
-        └─→ AudioManager.playShoot()
-```
+    %% ───────────────────────────────
+    %% AudioManager
+    %% ───────────────────────────────
+    class AudioManager {
+        -shoot_ : Sound
+        -explosion_ : Sound
+        -levelup_ : Sound
+        +AudioManager(shootPath string, explosionPath string, levelupPath string)
+        +~AudioManager()
+        +playShoot() void
+        +playExplosion() void
+        +playLevelUp() void
+    }
 
-### Inheritance & Composition Diagram
+    %% ───────────────────────────────
+    %% Collision namespace (free functions)
+    %% ───────────────────────────────
+    class Collision {
+        <<namespace>>
+        +check(a Rectangle, b Rectangle)$ bool
+        +makeBulletRect(x float, y float)$ Rectangle
+        +makePlayerRect(x float, y float, texW float, texH float, scale float)$ Rectangle
+        +makeEnemyRect(x float, y float, texW float, texH float, scale float)$ Rectangle
+        +makeShieldPickupRect(x float, y float)$ Rectangle
+    }
 
-```
-Composition Relationships in GameController:
-┌─────────────────────────┐
-│   GameController        │
-├─────────────────────────┤
-│ ┌─────────────────────┐ │  Models (Game Logic)
-│ │ Player              │ │
-│ │ BulletManager       │ │
-│ │ EnemyManager        │ │
-│ │ GameState           │ │
-│ │ ShieldPickup        │ │
-│ │ Starfield           │ │
-│ ├─────────────────────┤ │
-│ │ Renderer (RAII)     │ │  Views (Presentation)
-│ │ AudioManager (RAII) │ │
-│ └─────────────────────┘ │
-└─────────────────────────┘
-       │ uses
-       ▼
-    Collision (Utilities)
+    %% ───────────────────────────────
+    %% Relationships
+    %% ───────────────────────────────
 
+    %% Entry point creates GameController
+    main ..> GameController : creates
 
-Manager Pattern Used For Collections:
-┌──────────────────────────────────────┐
-│        Data Structure                │
-├──────────────────────────────────────┤
-│ std::array<T, MAX_SIZE>              │
-└──────────────────────────────────────┘
-       ▲         ▲         ▲
-       │         │         │
-    ┌──┴──┐  ┌──┴──┐  ┌──┴──────┐
-    │Bullet│  │Enemy│  │  Star   │
-    └──────┘  └─────┘  └─────────┘
-       │         │         │
-       ▼         ▼         ▼
-   BulletMgr EnemyMgr  Starfield
-   (owns)    (owns)    (owns)
+    %% GameController composes all model/view objects
+    GameController *-- Player         : player
+    GameController *-- BulletManager  : bullets
+    GameController *-- EnemyManager   : enemies
+    GameController *-- ShieldPickup   : shield
+    GameController *-- Starfield      : stars
+    GameController *-- GameState      : gs
+    GameController *-- Renderer       : rend
+    GameController *-- AudioManager   : audio
+
+    %% GameController uses Collision namespace
+    GameController ..> Collision : uses
+
+    %% Managers own their data structs
+    BulletManager *-- Bullet  : owns array of
+    EnemyManager  *-- Enemy   : owns array of
+    Starfield     *-- Star    : owns array of
 ```
 
 ---
+
+### Relationship key
+
+| Symbol | Meaning |
+|--------|---------|
+| `*--`  | Composition (owner holds member by value) |
+| `..>`  | Dependency / uses |
+| `$`    | Static method |
+| `<<struct>>` | Plain data type (no behaviour) |
+| `<<namespace>>` | Free-function grouping (no instances) |
+
 
 *This MVC architecture provides a clean, extensible foundation for game development, maintaining clear boundaries between game logic, presentation, and control flow.*
