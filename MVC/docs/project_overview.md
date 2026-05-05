@@ -9,18 +9,6 @@
 
 ---
 
-## MVC Architecture Overview
-
-This Space Shooter game is built using the **Model-View-Controller (MVC)** architectural pattern, which separates the application into three interconnected components:
-
-- **Model**: Manages game data and business logic
-- **View**: Handles rendering and audio presentation
-- **Controller**: Processes input and orchestrates the game loop
-
-The architecture was converted from C to C++, leveraging object-oriented programming principles while maintaining clear separation of concerns. The GameController acts as the central orchestrator, coordinating interactions between models and views while maintaining the game loop.
-
----
-
 ## Layer-by-Layer Breakdown
 
 ### 🎮 **CONTROLLER LAYER**
@@ -307,6 +295,49 @@ SpaceShooter/
 └── 📂 Debug/ & x64/
     └── Build artifacts and compiled executables
 ```
+
+---
+
+## File Organization by Layer
+
+### **🎮 CONTROLLER LAYER (Orchestration)**
+| File | Responsibility |
+|------|-----------------|
+| `GameController.cpp` | Main game loop, input processing, collision handling, entity updates, rendering coordination |
+
+---
+
+### **📊 MODEL LAYER (Game Logic & Data)**
+| File | Responsibility |
+|------|-----------------|
+| `Player.cpp` | Player movement and position management |
+| `Bullet.cpp` | Bullet firing, movement, and lifecycle management |
+| `Enemy.cpp` | Enemy AI, movement, spawning, and respawning |
+| `GameState.cpp` | Score tracking, level progression, and game state |
+| `ShieldPickup.cpp` | Shield power-up spawning, expiration, and player shield logic |
+| `Starfield.cpp` | Background star generation and scrolling animation |
+
+---
+
+### **🎨 VIEW LAYER (Presentation & Audio)**
+| File | Responsibility |
+|------|-----------------|
+| `Renderer.cpp` | Texture loading, asset management, and rendering configuration (RAII cleanup) |
+| `AudioManager.cpp` | Sound effect loading, playback triggers, and audio cleanup (RAII) |
+
+---
+
+### **🔍 UTILITY LAYER (Support & Helpers)**
+| File | Responsibility |
+|------|-----------------|
+| `Collision.cpp` | Collision detection and rectangle builder functions |
+
+---
+
+### **📄 Entry Point**
+| File | Responsibility |
+|------|-----------------|
+| `main.cpp` | Program initialization - creates and runs GameController |
 
 ---
 
